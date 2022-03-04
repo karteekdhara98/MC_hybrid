@@ -1,6 +1,6 @@
-% clear all
-close all
-clc
+clear all
+% close all
+% clc
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Code to implement hybrid method of Monte Carlo in a single slab
@@ -36,7 +36,7 @@ z_b = 2*C_R*D;
 % Output flags
 show_vis    = false; % Flag for visualization (plots/figures)
 verbose     = false; % Flag for printing output
-hybrid      = false; % Hybrid MC & DFT
+hybrid      = true; % Hybrid MC & DFT
 
 %% Initialize parameters for monte carlo
 % Details of photon packets
@@ -91,7 +91,7 @@ parfor n = 1:N_packet
     S_rz_temp = zeros(Nr,Nz);
     R_ralpha_temp = zeros(Nr,Nalpha);
     T_ralpha_temp = zeros(Nr,Nalpha);
-    
+    alpha_t = 0;
     % While the packet is not dead
     while(1)
         if(photon(1,9) == 0) % Step size zero
@@ -214,27 +214,27 @@ parfor n = 1:N_packet
         end
         
         if hybrid
-        % Is the photon in the center slice, and travelling in the downward
-        % direction? If yes, move the photon by l_t_prime and use Diffusion
-        % theory.
-        if ((photon(1,3) > z_c) && (photon(1,3) < d - z_c) ) % && (photon(1,6) > 0)
-            next_position = photon(1,1:3) + l_t_prime * photon(1,4:6);
-            if ((next_position(1,3) > z_c) && (next_position(1,3) < d - z_c) ) % && (photon(1,6) > 0)
-                
-            % Use diffusion theory to simulate an isotropic source now
-            % TBD
-            [~,i_r] = min(abs(sqrt(photon(1,1)^2+photon(1,2)^2)-r));
-            [~,i_z] = min(abs(photon(1,3)-z));
-%             alpha_packet = atan2(photon(1,2),photon(1,1));
-%             alpha_packet(alpha_packet<0) = alpha_packet(alpha_packet<0) + 2*pi;
-%             [~,i_alpha] = min(abs(alpha_packet-alpha));
-                
-            S_rz_temp(i_r,i_z) = S_rz_temp(i_r,i_z) + photon(1,7);
-            photon(1,7) = 0;
-            
-            photon(1,8) = 1; % Kill photon packet
+            % Is the photon in the center slice, and travelling in the downward
+            % direction? If yes, move the photon by l_t_prime and use Diffusion
+            % theory.
+            if ((photon(1,3) > z_c) && (photon(1,3) < d - z_c) ) % && (photon(1,6) > 0)
+                next_position = photon(1,1:3) + l_t_prime * photon(1,4:6);
+                if ((next_position(1,3) > z_c) && (next_position(1,3) < d - z_c) ) % && (photon(1,6) > 0)
+
+                % Use diffusion theory to simulate an isotropic source now
+                % TBD
+                [~,i_r] = min(abs(sqrt(photon(1,1)^2+photon(1,2)^2)-r));
+                [~,i_z] = min(abs(photon(1,3)-z));
+    %             alpha_packet = atan2(photon(1,2),photon(1,1));
+    %             alpha_packet(alpha_packet<0) = alpha_packet(alpha_packet<0) + 2*pi;
+    %             [~,i_alpha] = min(abs(alpha_packet-alpha));
+
+                S_rz_temp(i_r,i_z) = S_rz_temp(i_r,i_z) + photon(1,7);
+                photon(1,7) = 0;
+
+                photon(1,8) = 1; % Kill photon packet
+                end
             end
-        end
         end
         
         if ((photon(1,8) == 0)&&(photon(1,7) > th_wt)) % Photon alive & Weight large enough
@@ -261,7 +261,7 @@ parfor n = 1:N_packet
 end
 %% Output recorded quantities
 
-toc
+
 
 
 R_alpha = sum(R_ralpha,1);
@@ -278,22 +278,22 @@ Sd_rz = S_rz./(N_packet*Da'*dz);
 Sd_rz(end,:) = 0;
 Sd_rz(:,end) = 0;
 
-dphi = 0.1;
+dphi = 1;
 phi = reshape([0:dphi:pi],1,1,[]);
 
-for i = 1:length(r)
-    Rd = zeros(Nr,Nz,length(phi));
-for j = -1:1
-    z1 = -z_b + 2*j*(d+2*z_b) + (z+z_b);
-    z2 = -z_b + 2*j*(d+2*z_b) - (z+z_b);
-    rho1 = sqrt(r(i).^2 + r'.^2 - 2*r(i)*r'.*cos(phi) + z1.^2);
-    rho2 = sqrt(r(i).^2 + r'.^2 - 2*r(i)*r'.*cos(phi) + z2.^2);
-    Rd = Rd + z1.*(1+mu_eff*rho1).*exp(-mu_eff*rho1)./(4*pi*rho1.^3);
-    Rd = Rd - z2.*(1+mu_eff*rho2).*exp(-mu_eff*rho2)./(4*pi*rho2.^3);
+parfor i = 1:length(r)
+        Rd = zeros(Nr,Nz,length(phi));
+    for j = -1:1
+        z1 = -z_b + 2*j*(d+2*z_b) + (z+z_b);
+        z2 = -z_b + 2*j*(d+2*z_b) - (z+z_b);
+        rho1 = sqrt(r(i).^2 + r'.^2 - 2*r(i)*r'.*cos(phi) + z1.^2);
+        rho2 = sqrt(r(i).^2 + r'.^2 - 2*r(i)*r'.*cos(phi) + z2.^2);
+        Rd = Rd + z1.*(1+mu_eff*rho1).*exp(-mu_eff*rho1)./(4*pi*rho1.^3);
+        Rd = Rd - z2.*(1+mu_eff*rho2).*exp(-mu_eff*rho2)./(4*pi*rho2.^3);
+    end
+        R_DT(i,1) = 2*sum(Sd_rz.*r'.*Rd,[1 2 3])*dr*dz*dphi;
 end
-    R_DT(i,1) = 2*sum(Sd_rz.*r'.*Rd,[1 2 3])*dr*dz*dphi;
-end
-
+toc
 figure;
 semilogy(r,R_DT); hold; 
 semilogy(r,R_DT+R_r);
