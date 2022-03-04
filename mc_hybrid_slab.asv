@@ -36,6 +36,7 @@ z_b = 2*C_R*D;
 % Output flags
 show_vis    = false; % Flag for visualization (plots/figures)
 verbose     = false; % Flag for printing output
+hybrid      = false; % Hybrid MC
 
 %% Initialize parameters for monte carlo
 % Details of photon packets
@@ -212,6 +213,7 @@ parfor n = 1:N_packet
             
         end
         
+        if hybrid
         % Is the photon in the center slice, and travelling in the downward
         % direction? If yes, move the photon by l_t_prime and use Diffusion
         % theory.
@@ -232,6 +234,7 @@ parfor n = 1:N_packet
             
             photon(1,8) = 1; % Kill photon packet
             end
+        end
         end
         
         if ((photon(1,8) == 0)&&(photon(1,7) > th_wt)) % Photon alive & Weight large enough
@@ -272,6 +275,8 @@ R = R/N_packet;
 
 
 Sd_rz = S_rz./(N_packet*Da'*dz);
+Sd_rz(end,:) = 0;
+Sd_rz(:,end) = 0;
 
 dphi = 0.1;
 phi = reshape([0:dphi:pi],1,1,[]);
@@ -290,9 +295,10 @@ end
 end
 
 figure;
-semilogy(r,R_DT);
+semilogy(r,R_DT); hold; 
+semilogy(r,R_DT+R_r);
 xlabel('r (cm)');
-ylabel('Diffuse reflectance'); 
+legend('R_{DT}(r)','R_{DT}(r)+R_{MC}(r)'); 
 
 % A_z = sum(A_rz,1);
 % A = sum(A_rz,[1,2]);
